@@ -1,0 +1,19 @@
+[tool.poetry]
+name = "compositeai"
+version = "0.1.0"
+description = ""
+authors = ["Leon Chen <lrchen01@gmail.com>"]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.11"
+openai = "^1.25.1"
+pydantic = "^2.7.1"
+python-dotenv = "^1.0.1"
+beautifulsoup4 = "^4.12.3"
+requests = "^2.31.0"
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"

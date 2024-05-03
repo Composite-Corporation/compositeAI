@@ -1,6 +1,6 @@
 from typing import List, Optional, Any
 
-from drivers import BaseDriver, DriverResponse
+from compositeai.drivers.base_driver import BaseDriver, DriverResponse
 from tools import BaseTool
 
 class Agent():
@@ -33,7 +33,7 @@ class Agent():
 
         for _ in range(self.max_iterations):
             driver_response = self.driver._iterate(messages=self.memory, tools=self.tools)
-            if not driver_response.tool_calls:
+            if not driver_response.tool_call:
                 driver_message = driver_response.message
                 self.memory.append({"role": driver_message.role, "content": driver_message.content})
             else:

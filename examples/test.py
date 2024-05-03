@@ -1,5 +1,5 @@
-from src.drivers import OpenAIDriver
-from src.tools import GoogleSerperApiTool
+from compositeai.drivers import OpenAIDriver
+from compositeai.tools import GoogleSerperApiTool
 
 test = OpenAIDriver(model="gpt-3.5-turbo-1106")
 tool = GoogleSerperApiTool()
