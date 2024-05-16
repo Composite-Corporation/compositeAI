@@ -14,7 +14,7 @@ class WebScrapeTool(BaseTool):
             if response.status_code == 200:
                 soup = BeautifulSoup(response.content, "html.parser")
                 text = soup.get_text()
-                if len(text) > 50000:
+                if len(text) > 16000:
                     return "Requested content exceeds maximum length."
                 return text
             else:

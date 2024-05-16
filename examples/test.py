@@ -1,13 +1,12 @@
 from compositeai.drivers import OpenAIDriver
-from compositeai.tools import GoogleSerperApiTool
+from compositeai.tools import GoogleSerperApiTool, WebScrapeTool
+from compositeai.agents.agent import Agent
 
-test = OpenAIDriver(model="gpt-3.5-turbo-1106")
-tool = GoogleSerperApiTool()
-messages = [
-    {"role": "system", "content": "You are a helpful assistant that will use tools at your disposal to complete the user's task."},
-    {"role": "user", "content": "Please find contact information for as many political candidates running for office in Boston as you can."}
-]
+test_agent = Agent(
+    driver=OpenAIDriver(model="gpt-3.5-turbo-1106"),
+    description="You are a private investigator that can research details about people off of the internet",
+    tools=[GoogleSerperApiTool(), WebScrapeTool()],
+)
 
-response = test._iterate(messages=messages, tools=[tool])
-print(response)
+test_agent.execute("Please find information on Jody Li, University of Washington")
 

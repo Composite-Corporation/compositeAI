@@ -2,12 +2,7 @@ from typing import Optional, List
 import json
 from openai import OpenAI
 
-from compositeai.drivers.base_driver import (
-    BaseDriver,
-    DriverToolCall,
-    DriverUsage,
-    DriverResponse,
-)
+from compositeai.drivers.base_driver import BaseDriver
 from compositeai.tools import BaseTool
 
 class OpenAIDriver(BaseDriver):
@@ -33,12 +28,12 @@ class OpenAIDriver(BaseDriver):
         super().__init__(model)
 
 
-    # Override BaseWrapper chat
+    # Override BaseDriver
     def _iterate(
         self, 
         messages: List,
         tools: Optional[List[BaseTool]],
-    ) -> DriverResponse:
+    ):
         # Convert tools to OpenAI function call schema
         openai_tools = self._toolschema_to_openai_tools(tools)
 
@@ -47,41 +42,25 @@ class OpenAIDriver(BaseDriver):
             model=self.model,
             messages=messages,
             tools=openai_tools,
-        ).choices[0].message
-
-        # Extract response data
-        role = response.role
-        content = response.content
-        driver_tool_call = None
-        if response.tool_calls:
-            tool_call = response.tool_calls[0]
-            driver_tool_call = DriverToolCall(
-                call_id=tool_call.id,
-                tool_name=tool_call.name,
-                arguments=json.loads(tool_call.function.arguments)
-            )
-        driver_usage = DriverUsage(
-            prompt_tokens=response.usage.prompt_tokens, 
-            completion_tokens=response.usage.completion_tokens, 
-            total_tokens=response.usage.total_tokens
         )
 
-        # Return DriverResponse object
-        return DriverResponse(
-            role=role,
-            content=content,
-            tool_call=driver_tool_call,
-            usage=driver_usage,
-        )
+        # Return response object
+        return response
 
 
     # Helper function convert tool schema to OpenAI function calling schema
     def _toolschema_to_openai_tools(self, tools: Optional[List[BaseTool]]):
+        # If no tools passed to driver, return None object
         if not tools:
             return None
+        
+        # Populate OpenAI function calling list of formatted tools
         openai_tools = []
         for tool in tools:
+            # Get schema of tool/function
             tool_schema = tool.get_schema()
+
+            # OpenAI function calling tool format
             openai_tool = {
                 "type": "function",
                 "function": {
@@ -96,15 +75,18 @@ class OpenAIDriver(BaseDriver):
                 }
             }
 
+            # Populate formatted arguments for tool
             for arg in tool_schema.arguments:
                 openai_tool["function"]["parameters"]["properties"][arg.name] = {"type": self._type_conversion_openai(arg.type)}
                 if arg.required:
                     openai_tool["function"]["parameters"]["required"].append(arg.name)
 
+            # Add final formatted function to list
             openai_tools.append(openai_tool)
 
         return openai_tools
     
+    # Helper function converting python types to OpenAI function calling type format
     def _type_conversion_openai(self, type: str) -> str:
         conversions = {
             "int": "integer",

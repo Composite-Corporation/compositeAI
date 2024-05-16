@@ -14,6 +14,7 @@ class ToolSchema(BaseModel):
 
 class BaseTool():
     def __init__(self, func: callable) -> None:
+        self.func = func
         # Get function details
         func_name = func.__name__
         func_doc = func.__doc__
