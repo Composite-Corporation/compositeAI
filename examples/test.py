@@ -3,10 +3,9 @@ from compositeai.tools import GoogleSerperApiTool, WebScrapeTool
 from compositeai.agents.agent import Agent
 
 test_agent = Agent(
-    driver=OpenAIDriver(model="gpt-3.5-turbo-1106"),
-    description="You are a private investigator that can research details about people off of the internet",
+    driver=OpenAIDriver(model="gpt-4-turbo"),
+    description="You are a web researcher that will find answers to my questions.",
     tools=[GoogleSerperApiTool(), WebScrapeTool()],
 )
 
-test_agent.execute("Please find information on Jody Li, University of Washington")
-
+test_agent.execute("What's the difference between the ACT paper vs digital test?")

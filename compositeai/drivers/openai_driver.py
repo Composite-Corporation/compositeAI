@@ -34,57 +34,53 @@ class OpenAIDriver(BaseDriver):
         messages: List,
         tools: Optional[List[BaseTool]],
     ):
-        # Convert tools to OpenAI function call schema
-        openai_tools = self._toolschema_to_openai_tools(tools)
+        # Initialize empty list of OpenAI function call schemas
+        openai_fcs = []
+
+        # Convert given tools to OpenAI function calling format
+        for tool in tools:
+            tool_openai_fc = self._basetool_to_openai_fc_schema(tool)
+            openai_fcs.append(tool_openai_fc)
 
         # OpenAI API call response
         response = self.client.chat.completions.create(
             model=self.model,
             messages=messages,
-            tools=openai_tools,
+            tools=openai_fcs,
         )
 
         # Return response object
         return response
 
+    
+    # Helper function to convert BaseTool to OpenAI function calling schema
+    def _basetool_to_openai_fc_schema(self, tool: BaseTool):
+        # Get schema of tool/function
+        tool_schema = tool.get_schema()
 
-    # Helper function convert tool schema to OpenAI function calling schema
-    def _toolschema_to_openai_tools(self, tools: Optional[List[BaseTool]]):
-        # If no tools passed to driver, return None object
-        if not tools:
-            return None
-        
-        # Populate OpenAI function calling list of formatted tools
-        openai_tools = []
-        for tool in tools:
-            # Get schema of tool/function
-            tool_schema = tool.get_schema()
-
-            # OpenAI function calling tool format
-            openai_tool = {
-                "type": "function",
-                "function": {
-                    "name": tool_schema.name,
-                    "description": tool_schema.description,
-                    "parameters": {
-                        "type": "object",
-                        "properties": {
-                        },
-                        "required": []
+        # OpenAI function calling tool format
+        openai_fc = {
+            "type": "function",
+            "function": {
+                "name": tool_schema.name,
+                "description": tool_schema.description,
+                "parameters": {
+                    "type": "object",
+                    "properties": {
                     },
-                }
+                    "required": []
+                },
             }
+        }
 
-            # Populate formatted arguments for tool
-            for arg in tool_schema.arguments:
-                openai_tool["function"]["parameters"]["properties"][arg.name] = {"type": self._type_conversion_openai(arg.type)}
-                if arg.required:
-                    openai_tool["function"]["parameters"]["required"].append(arg.name)
-
-            # Add final formatted function to list
-            openai_tools.append(openai_tool)
-
-        return openai_tools
+        # Populate formatted arguments for tool
+        for arg in tool_schema.arguments:
+            openai_fc["function"]["parameters"]["properties"][arg.name] = {"type": self._type_conversion_openai(arg.type)}
+            if arg.required:
+                openai_fc["function"]["parameters"]["required"].append(arg.name)
+        
+        return openai_fc
+    
     
     # Helper function converting python types to OpenAI function calling type format
     def _type_conversion_openai(self, type: str) -> str:
