@@ -3,9 +3,10 @@ from compositeai.tools import GoogleSerperApiTool, WebScrapeTool
 from compositeai.agents.agent import Agent
 
 test_agent = Agent(
-    driver=OpenAIDriver(model="gpt-4-turbo"),
+    driver=OpenAIDriver(model="gpt-3.5-turbo"),
     description="You are a web researcher that will find answers to my questions.",
     tools=[GoogleSerperApiTool(), WebScrapeTool()],
 )
 
-test_agent.execute("What's the difference between the ACT paper vs digital test?")
+result = test_agent.execute("What's the difference between the ACT paper vs digital test?")
+print(result)

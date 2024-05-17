@@ -7,11 +7,11 @@ from compositeai.tools import BaseTool
 class _AgentFinish(BaseTool):
     def __init__(self) -> None:
         # Agent finish function
-        def _finish():
+        def _finish(result: str):
             """
-            Only use when you believe you have completed the task at hand.
+            Return the final result once you believe you have completed the task at hand.
             """
-            return
+            return result
         
         super().__init__(func=_finish)
 
@@ -35,6 +35,13 @@ class Agent():
             tools.append(_AgentFinish())
             self.tools = tools
 
+
+    def directed_edge(self, agent: 'Agent'):
+        # Check if arg is instance of Agent class
+        if not isinstance(agent, Agent):
+            raise ValueError("Argument must be an instance of Agent")
+        
+
     def execute(self, task: str, input: Optional[Any] = None):
         # Clear memory at start
         self.memory.clear()
@@ -57,7 +64,6 @@ class Agent():
         self.memory.append(user_message)
 
         # Loop through iterations
-        agent_finish = False
         for _ in range(self.max_iterations):
             # Obtain response from driver iteration and append to memory
             driver_response = self.driver._iterate(messages=self.memory, tools=self.tools)
@@ -77,20 +83,23 @@ class Agent():
                     function_name = tool_call.function.name
                     function_args = json.loads(tool_call.function.arguments)
 
-                    # Get function call schema and append to memory
+                    # Iterate through provided tools to check if driver_response function call matches one
+                    no_match_flag = True
                     for tool in self.tools:
+                        # If match, run tool function on arguments for result, and append to memory
                         if tool.get_schema().name == function_name:
+                            no_match_flag = False
                             function_result = tool.func(**function_args)
-                    self.memory.append({"role": "tool", "content": str(function_result), "tool_call_id": tool_call_id})
+                            self.memory.append({"role": "tool", "content": str(function_result), "tool_call_id": tool_call_id})
 
-                    # If function call is agent finish, set flag to True
-                    if function_name == "_finish":
-                        agent_finish = True
-                        break
-
-            # If agent_finish flag, break
-            if agent_finish:
-                break
-
-        print(self.memory)
+                            # If agent_finish called, return result
+                            if function_name == "_finish":
+                                return function_result
+                    
+                    # If driver_response function call matches none of the given tools
+                    if no_match_flag:
+                        raise Exception("Driver called function, function call does not match any of the provided tools.")
+        
+        # At this point, maximum number of iterations reached
+        raise Exception("Maximum number of iterations reached.")
             
