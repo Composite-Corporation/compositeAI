@@ -1,37 +1,38 @@
 import inspect
-from typing import List
-from pydantic import BaseModel
+from typing import List, Callable
+from pydantic import BaseModel, validator
+
 
 class ParamDesc(BaseModel):
     name: str
     type: str
     required: bool
 
+
 class ToolSchema(BaseModel):
     name: str
     description: str
     arguments: List[ParamDesc]
 
-class BaseTool():
-    def __init__(self, func: callable) -> None:
-        self.func = func
+    
+class BaseTool(BaseModel):
+    func: Callable
+    
+    @validator("func")
+    def check_func(cls, v):
+        if not v.__name__:
+            raise ValueError("Function of tool must have a name.")
+        if not v.__doc__:
+            raise ValueError("Function of tool must have a docstring.")
+        
+    def get_schema(self):
         # Get function details
-        func_name = func.__name__
-        func_doc = func.__doc__
-        signature = inspect.signature(func)
+        func_name = self.func.__name__
+        func_doc = self.func.__doc__
+        signature = inspect.signature(self.func)
         arguments = []
         for name, param in signature.parameters.items():
             required = True if param.default is inspect.Parameter.empty else False
             arguments.append(ParamDesc(name=name, type=param.annotation.__name__, required=required))
-
-        # Validation 
-        if not func_name:
-            raise ValueError("Function of tool must have a name.")
-        if not func_doc:
-            raise ValueError("Function of tool must have a docstring.")
-
-        # Set function description object
-        self.tool = ToolSchema(name=func_name, description=func_doc, arguments=arguments)
-
-    def get_schema(self):
-        return self.tool
+        
+        return ToolSchema(name=func_name, description=func_doc, arguments=arguments)

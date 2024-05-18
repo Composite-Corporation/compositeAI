@@ -1,19 +1,19 @@
-from typing import List, Optional, Any
+from typing import List, Optional, Callable, Any
 import json
 
 from compositeai.drivers.base_driver import BaseDriver
 from compositeai.tools import BaseTool
 
+
+def _finish(result: str):
+    """
+    Return the final result once you believe you have completed the task at hand.
+    """
+    return result
+
+
 class _AgentFinish(BaseTool):
-    def __init__(self) -> None:
-        # Agent finish function
-        def _finish(result: str):
-            """
-            Return the final result once you believe you have completed the task at hand.
-            """
-            return result
-        
-        super().__init__(func=_finish)
+    func: Callable = _finish
 
 
 class Agent():
