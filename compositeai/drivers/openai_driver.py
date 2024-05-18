@@ -1,32 +1,36 @@
 from typing import Optional, List
-import json
 from openai import OpenAI
+from pydantic import validator, PrivateAttr
 
 from compositeai.drivers.base_driver import BaseDriver
 from compositeai.tools import BaseTool
 
 class OpenAIDriver(BaseDriver):
-    client = OpenAI()
-    openai_supported_models = set([
-        "gpt-4-turbo", 
-        "gpt-4-turbo-2024-04-09", 
-        "gpt-4-turbo-preview", 
-        "gpt-4-0125-preview", 
-        "gpt-4-1106-preview", 
-        "gpt-4", 
-        "gpt-4-0613", 
-        "gpt-3.5-turbo", 
-        "gpt-3.5-turbo-0125", 
-        "gpt-3.5-turbo-1106", 
-        "gpt-3.5-turbo-0613",
-    ])
+    # Class specific variables (not part of Pydantic model)
+    _client: OpenAI = PrivateAttr()
+    
+    def __init__(self, **data):
+        super().__init__(**data)
+        self._client = OpenAI()
 
-
-    def __init__(self, model: str) -> None:
-        if model not in self.openai_supported_models:
-            raise ValueError("OpenAI model not supported: " + model)
-        super().__init__(model)
-
+    @validator("model")
+    def check_model(cls, v):
+        _openai_supported_models = set([
+            "gpt-4-turbo", 
+            "gpt-4-turbo-2024-04-09", 
+            "gpt-4-turbo-preview", 
+            "gpt-4-0125-preview", 
+            "gpt-4-1106-preview", 
+            "gpt-4", 
+            "gpt-4-0613", 
+            "gpt-3.5-turbo", 
+            "gpt-3.5-turbo-0125", 
+            "gpt-3.5-turbo-1106", 
+            "gpt-3.5-turbo-0613",
+        ])
+        if v not in _openai_supported_models:
+            raise ValueError(f"Model must be one of {_openai_supported_models}.")
+        return v
 
     # Override BaseDriver
     def _iterate(
@@ -43,7 +47,7 @@ class OpenAIDriver(BaseDriver):
             openai_fcs.append(tool_openai_fc)
 
         # OpenAI API call response
-        response = self.client.chat.completions.create(
+        response = self._client.chat.completions.create(
             model=self.model,
             messages=messages,
             tools=openai_fcs,
@@ -54,7 +58,7 @@ class OpenAIDriver(BaseDriver):
 
     
     # Helper function to convert BaseTool to OpenAI function calling schema
-    def _basetool_to_openai_fc_schema(self, tool: BaseTool):
+    def _basetool_to_openai_fc_schema(self, tool: BaseTool) -> object:
         # Get schema of tool/function
         tool_schema = tool.get_schema()
 

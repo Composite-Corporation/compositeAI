@@ -15,6 +15,7 @@ class _AgentFinish(BaseTool):
         
         super().__init__(func=_finish)
 
+
 class Agent():
     def __init__(
         self, 
@@ -39,10 +40,12 @@ class Agent():
     def directed_edge(self, agent: 'Agent'):
         # Check if arg is instance of Agent class
         if not isinstance(agent, Agent):
-            raise ValueError("Argument must be an instance of Agent")
+            raise ValueError("Argument must be an instance of Agent.")
+        
+        raise NotImplementedError("Method not implemented.")
         
 
-    def execute(self, task: str, input: Optional[Any] = None):
+    def execute(self, task: str, input: Optional[Any] = None) -> str:
         # Clear memory at start
         self.memory.clear()
 
@@ -72,7 +75,7 @@ class Agent():
             print(driver_response)
             print("\n")
 
-            # Ussage data 
+            # Usage data 
             usage = driver_response.usage
 
             # If function called, loop through each, obtain schema, and append to memory
