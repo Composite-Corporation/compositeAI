@@ -1,7 +1,9 @@
 from typing import List, Optional, Callable, Any
+from pydantic import BaseModel, Field, PrivateAttr, validator
 import json
 
 from compositeai.drivers.base_driver import BaseDriver
+from compositeai.drivers.openai_driver import OpenAIDriver
 from compositeai.tools import BaseTool
 
 
@@ -11,31 +13,31 @@ def _finish(result: str):
     """
     return result
 
-
 class _AgentFinish(BaseTool):
     func: Callable = _finish
 
 
-class Agent():
-    def __init__(
-        self, 
-        driver: BaseDriver,
-        description: str,
-        tools: Optional[List[BaseTool]],
-        max_iterations: int = 10,
-    ) -> None:
-        self.driver = driver
-        self.description = description
-        self.max_iterations = max_iterations
-        self.memory = []
+class Agent(BaseModel):
+    driver: Optional[BaseDriver] = Field(default=OpenAIDriver(model="gpt-4-turbo"))
+    description: str
+    tools: Optional[List[BaseTool]] = Field(default=None)
+    max_iterations: int = Field(default=10, ge=0)
 
-        # Logic to add agent finish tool to final tools list
-        if not tools:
-            self.tools = [_AgentFinish()]
+    # Private attributes
+    _scratchpad: List = PrivateAttr(default=[])
+    _conversation_history: List = PrivateAttr(default=[])
+    _memory: List = PrivateAttr(default=[])
+
+
+    @validator('tools', pre=True)
+    def add_default_tools(cls, value):
+        """Add default tools to tool list"""
+        if not value:
+            value = [_AgentFinish()]
         else:
-            tools.append(_AgentFinish())
-            self.tools = tools
-
+            value.append(_AgentFinish())
+        return value
+    
 
     def directed_edge(self, agent: 'Agent'):
         # Check if arg is instance of Agent class
@@ -43,11 +45,11 @@ class Agent():
             raise ValueError("Argument must be an instance of Agent.")
         
         raise NotImplementedError("Method not implemented.")
-        
+    
 
     def execute(self, task: str, input: Optional[Any] = None) -> str:
         # Clear memory at start
-        self.memory.clear()
+        self._memory.clear()
 
         # Instantiate task based on input string
         if input:
@@ -63,15 +65,15 @@ class Agent():
         user_message = {"role": "user", "content": task}
 
         # Primitive memory system
-        self.memory.append(system_message)
-        self.memory.append(user_message)
+        self._memory.append(system_message)
+        self._memory.append(user_message)
 
         # Loop through iterations
         for _ in range(self.max_iterations):
             # Obtain response from driver iteration and append to memory
-            driver_response = self.driver._iterate(messages=self.memory, tools=self.tools)
+            driver_response = self.driver._iterate(messages=self._memory, tools=self.tools)
             message = driver_response.choices[0].message
-            self.memory.append(message)
+            self._memory.append(message)
             print(driver_response)
             print("\n")
 
@@ -93,7 +95,7 @@ class Agent():
                         if tool.get_schema().name == function_name:
                             no_match_flag = False
                             function_result = tool.func(**function_args)
-                            self.memory.append({"role": "tool", "content": str(function_result), "tool_call_id": tool_call_id})
+                            self._memory.append({"role": "tool", "content": str(function_result), "tool_call_id": tool_call_id})
 
                             # If agent_finish called, return result
                             if function_name == "_finish":
