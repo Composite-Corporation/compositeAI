@@ -1,17 +1,28 @@
-from typing import Optional, List
+from typing import List
 from openai import OpenAI
 from pydantic import validator, PrivateAttr
+import textwrap
+import json
 
-from compositeai.drivers.base_driver import BaseDriver
+from compositeai.drivers.base_driver import (
+    BaseDriver,
+    DriverUsage,
+    DriverToolCall,
+    DriverPlan,
+    DriverAction, 
+    DriverObservation,
+)
 from compositeai.tools import BaseTool
 
+
 class OpenAIDriver(BaseDriver):
-    # Class specific variables (not part of Pydantic model)
     _client: OpenAI = PrivateAttr()
     
+
     def __init__(self, **data):
         super().__init__(**data)
         self._client = OpenAI()
+
 
     @validator("model")
     def check_model(cls, v):
@@ -31,30 +42,112 @@ class OpenAIDriver(BaseDriver):
         if v not in _openai_supported_models:
             raise ValueError(f"Model must be one of {_openai_supported_models}.")
         return v
+    
 
-    # Override BaseDriver
-    def _iterate(
+    def _plan(
         self, 
-        messages: List,
-        tools: Optional[List[BaseTool]],
-    ):
-        # Initialize empty list of OpenAI function call schemas
-        openai_fcs = []
+        system_prompt: str, 
+        tools: List[BaseTool],
+    ) -> DriverPlan:
+        tools_json_desc = [tool.get_schema().json() for tool in tools]
+        system_prompt = f"""
+            {system_prompt}
 
-        # Convert given tools to OpenAI function calling format
-        for tool in tools:
-            tool_openai_fc = self._basetool_to_openai_fc_schema(tool)
-            openai_fcs.append(tool_openai_fc)
+            YOU CAN USE THE FOLLOWING TOOLS:
+            {tools_json_desc}
 
-        # OpenAI API call response
+            WRITE A BRIEF PLAN FOR WHAT YOU SHOULD DO AT THIS POINT IN TIME:
+        """
+        system_prompt = textwrap.dedent(system_prompt)
+        messages = [{"role": "system", "content": system_prompt}]
         response = self._client.chat.completions.create(
             model=self.model,
             messages=messages,
-            tools=openai_fcs,
         )
+        content = response.choices[0].message.content
+        usage = self._openai_usage_to_driver_usage(response.usage)
+        return DriverPlan(content=content, usage=usage)
+    
+    
+    def _action(
+        self, 
+        system_prompt: str, 
+        tools: List[BaseTool],
+    ) -> DriverAction:
+        system_prompt = f"""
+            {system_prompt}
 
-        # Return response object
-        return response
+            USE THE GIVEN TOOLS TO EXECUTE YOUR PLAN.
+        """
+        system_prompt = textwrap.dedent(system_prompt)
+        messages = [{"role": "system", "content": system_prompt}]
+        openai_functions = [self._basetool_to_openai_fc_schema(tool) for tool in tools]
+        response = self._client.chat.completions.create(
+            model=self.model,
+            messages=messages,
+            tools=openai_functions,
+            tool_choice="required",
+        )
+        tool_calls = response.choices[0].message.tool_calls 
+        driver_tool_calls = []
+        for tool_call in tool_calls:
+            driver_tool_call = DriverToolCall(id=tool_call.id, name=tool_call.function.name, args=tool_call.function.arguments)
+            driver_tool_calls.append(driver_tool_call)
+        usage = self._openai_usage_to_driver_usage(response.usage)
+        return DriverAction(usage=usage, tool_calls=driver_tool_calls)
+
+
+    def _observe(
+        self, 
+        system_prompt: str,
+        tools: List[BaseTool],
+        action: DriverAction
+    ) -> DriverObservation:
+        data = []
+        for tool_call in action.tool_calls:
+            # Get function call info
+            function_name = tool_call.name
+            function_args = json.loads(tool_call.args)
+
+            # Iterate through provided tools to check if driver_response function call matches one
+            no_match_flag = True
+            for tool in tools:
+                # If match, run tool function on arguments for result, and append to memory
+                if tool.get_schema().name == function_name:
+                    no_match_flag = False
+                    function_result = str(tool.func(**function_args))
+                    data.append(function_result)
+            
+            # If driver_response function call matches none of the given tools
+            if no_match_flag:
+                raise Exception("Driver called function, function call does not match any of the provided tools.")
+            
+        # Once data has been obtained from the results of function calls, filter for useful insights as observations
+        system_prompt = f"""
+            {system_prompt}
+
+            HERE ARE IS WHAT YOU OBSERVED FROM YOUR PREVIOUS ACTION(S):
+            {data}
+
+            EXTRACT THE MOST RELEVANT DATA FROM YOUR OBSERVATIONS:
+        """
+        system_prompt = textwrap.dedent(system_prompt)
+        messages = [{"role": "system", "content": system_prompt}]
+        response = self._client.chat.completions.create(
+            model=self.model,
+            messages=messages,
+        )
+        content = response.choices[0].message.content
+        usage = self._openai_usage_to_driver_usage(response.usage)
+        return DriverObservation(content=content, usage=usage)
+    
+    
+    def _openai_usage_to_driver_usage(self, openai_usage_obj: object) -> DriverUsage:
+        return DriverUsage(
+            prompt_tokens=openai_usage_obj.prompt_tokens,
+            completion_tokens=openai_usage_obj.completion_tokens,
+            total_tokens=openai_usage_obj.total_tokens,
+        )
 
     
     # Helper function to convert BaseTool to OpenAI function calling schema
@@ -95,3 +188,4 @@ class OpenAIDriver(BaseDriver):
             "bool": "boolean",
         }
         return conversions[type]
+    
