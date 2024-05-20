@@ -85,7 +85,7 @@ class Agent(BaseModel):
         json_tool_calls = []
         for tool_call in tool_calls:
             json_tool_calls.append(tool_call.json())
-            if tool_call.name == _AgentFinishTool().func.__name__:
+            if tool_call.name == _AgentFinishTool().name:
                 result = json.loads(tool_call.args)["result"]
                 yield AgentResult(content=result)
                 return

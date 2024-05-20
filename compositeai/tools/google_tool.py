@@ -1,29 +1,31 @@
 import requests
 import json
 import os
-from typing import Callable
+from typing import Any
 from dotenv import load_dotenv
 
 from compositeai.tools import BaseTool
 
-load_dotenv()
-
-_SERP_API_KEY = os.getenv("SERP_API_KEY")
-
-def _google_serp_api(query: str):
-    """
-    Return Google search results based on a query.
-    """
-    url = "https://google.serper.dev/search"
-    payload = json.dumps({
-        "q": query
-    })
-    headers = {
-        'X-API-KEY': _SERP_API_KEY,
-        'Content-Type': 'application/json'
-    }
-    response = requests.request("POST", url, headers=headers, data=payload)
-    return response.json()["organic"]
 
 class GoogleSerperApiTool(BaseTool):
-    func: Callable = _google_serp_api
+    name: str = "google_search"
+    description: str = "Retrieve Google search results using the Googler Serper API"
+
+
+    def __init__(self, **data):
+        super().__init__(**data)
+        load_dotenv()
+        self._SERP_API_KEY = os.getenv("SERP_API_KEY")
+
+
+    def func(self, query: str) -> Any:
+        url = "https://google.serper.dev/search"
+        payload = json.dumps({
+            "q": query
+        })
+        headers = {
+            'X-API-KEY': self._SERP_API_KEY,
+            'Content-Type': 'application/json'
+        }
+        response = requests.request("POST", url, headers=headers, data=payload)
+        return response.json()["organic"]

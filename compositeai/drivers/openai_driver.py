@@ -1,6 +1,7 @@
 from typing import List
 from openai import OpenAI
 from pydantic import validator, PrivateAttr
+from dotenv import load_dotenv
 import textwrap
 import json
 
@@ -21,6 +22,7 @@ class OpenAIDriver(BaseDriver):
 
     def __init__(self, **data):
         super().__init__(**data)
+        load_dotenv()
         self._client = OpenAI()
 
 
