@@ -101,3 +101,100 @@ class Agent(BaseModel):
         self._scratchpad.append(f"observation(s): {observation.content}")
         yield observation
             
+
+            # def _plan(
+    #     self, 
+    #     system_prompt: str, 
+    #     tools: List[BaseTool],
+    # ) -> DriverPlan:
+    #     tools_json_desc = [tool.get_schema().json() for tool in tools]
+    #     system_prompt = f"""
+    #         {system_prompt}
+
+    #         YOU CAN USE THE FOLLOWING TOOLS:
+    #         {tools_json_desc}
+
+    #         WRITE A BRIEF PLAN FOR WHAT YOU SHOULD DO AT THIS POINT IN TIME:
+    #     """
+    #     system_prompt = textwrap.dedent(system_prompt)
+    #     messages = [{"role": "system", "content": system_prompt}]
+    #     response = self._client.chat.completions.create(
+    #         model=self.model,
+    #         messages=messages,
+    #     )
+    #     content = response.choices[0].message.content
+    #     usage = self._openai_usage_to_driver_usage(response.usage)
+    #     return DriverPlan(content=content, usage=usage)
+    
+    
+    # def _action(
+    #     self, 
+    #     system_prompt: str, 
+    #     tools: List[BaseTool],
+    # ) -> DriverAction:
+    #     system_prompt = f"""
+    #         {system_prompt}
+
+    #         USE THE GIVEN TOOLS TO EXECUTE YOUR PLAN.
+    #     """
+    #     system_prompt = textwrap.dedent(system_prompt)
+    #     messages = [{"role": "system", "content": system_prompt}]
+    #     openai_functions = [self._basetool_to_openai_fc_schema(tool) for tool in tools]
+    #     response = self._client.chat.completions.create(
+    #         model=self.model,
+    #         messages=messages,
+    #         tools=openai_functions,
+    #         tool_choice="required",
+    #     )
+    #     tool_calls = response.choices[0].message.tool_calls 
+    #     driver_tool_calls = []
+    #     for tool_call in tool_calls:
+    #         driver_tool_call = DriverToolCall(id=tool_call.id, name=tool_call.function.name, args=tool_call.function.arguments)
+    #         driver_tool_calls.append(driver_tool_call)
+    #     usage = self._openai_usage_to_driver_usage(response.usage)
+    #     return DriverAction(usage=usage, tool_calls=driver_tool_calls)
+
+
+    # def _observe(
+    #     self, 
+    #     system_prompt: str,
+    #     tools: List[BaseTool],
+    #     action: DriverAction
+    # ) -> DriverObservation:
+    #     data = []
+    #     for tool_call in action.tool_calls:
+    #         # Get function call info
+    #         function_name = tool_call.name
+    #         function_args = json.loads(tool_call.args)
+
+    #         # Iterate through provided tools to check if driver_response function call matches one
+    #         no_match_flag = True
+    #         for tool in tools:
+    #             # If match, run tool function on arguments for result, and append to memory
+    #             if tool.get_schema().name == function_name:
+    #                 no_match_flag = False
+    #                 function_result = str(tool.func(**function_args))
+    #                 data.append(function_result)
+            
+    #         # If driver_response function call matches none of the given tools
+    #         if no_match_flag:
+    #             raise Exception("Driver called function, function call does not match any of the provided tools.")
+            
+    #     # Once data has been obtained from the results of function calls, filter for useful insights as observations
+    #     system_prompt = f"""
+    #         {system_prompt}
+
+    #         HERE ARE IS WHAT YOU OBSERVED FROM YOUR PREVIOUS ACTION(S):
+    #         {data}
+
+    #         EXTRACT THE MOST RELEVANT DATA FROM YOUR OBSERVATIONS:
+    #     """
+    #     system_prompt = textwrap.dedent(system_prompt)
+    #     messages = [{"role": "system", "content": system_prompt}]
+    #     response = self._client.chat.completions.create(
+    #         model=self.model,
+    #         messages=messages,
+    #     )
+    #     content = response.choices[0].message.content
+    #     usage = self._openai_usage_to_driver_usage(response.usage)
+    #     return DriverObservation(content=content, usage=usage)
