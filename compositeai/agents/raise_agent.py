@@ -1,34 +1,54 @@
-from typing import Generator, List, Optional, Union
+from typing import Union, List, Optional
 from pydantic import BaseModel, PrivateAttr
+from enum import Enum
 import textwrap
 import json
 
-from compositeai.agents.base_agent import AgentResult, AgentFinishTool, BaseAgent
+from compositeai.agents.base_agent import AgentOutput, AgentStep, AgentResult, AgentExecution, BaseAgent
 from compositeai.drivers.base_driver import DriverInput, DriverToolChoice, DriverToolCall
 from compositeai.tools import BaseTool
 
 
+class NextStep(Enum):
+    PLAN = 'plan'
+    ACTION = 'action'
+    OBSERVE = 'observe'
+
+
 class RAISEAgent(BaseAgent):
     _scratchpad: List[str] = PrivateAttr(default=[])
+    _next_step: NextStep = PrivateAttr(default=NextStep.PLAN)
+    _next_actions: List[DriverToolCall] = PrivateAttr(default=[])
     
 
-    def execute(self, task: str, input: Optional[str] = None, stream: bool = False) -> Union[Generator, AgentResult]:
+    def initialize(self, task: str, input: Optional[str] = None) -> None:
         # Add initial data to conversation history and agent scratchpad
         self._scratchpad.append(f"task: {task}")
         if input:
             self._scratchpad.append(input)
-
-        # Loop through iterations
-        for _ in range(self.max_iterations):
-            for chunk in self._iterate():
-                if stream:
-                    yield chunk
-                if isinstance(chunk, AgentResult):
-                    return chunk
-
-        # At this point, maximum number of iterations reached
-        raise RuntimeError("Maximum number of iterations reached.")
     
+
+    def iterate(self) -> AgentOutput:
+        # Regenerate memory system
+        memory = self.refresh_memory()
+
+        # Run iteration based on next step
+        match self._next_step:
+            case NextStep.PLAN:
+                return self._plan(
+                    system_prompt=memory,
+                    tools=self.tools,
+                )
+            case NextStep.ACTION:
+                return self._action(
+                    system_prompt=memory,
+                )
+            case NextStep.OBSERVE:
+                return self._observe(
+                    system_prompt=memory,
+                    actions=self._next_actions,
+                )
+
     
     def refresh_memory(self):
         memory = f"""
@@ -41,39 +61,13 @@ class RAISEAgent(BaseAgent):
             ~~~NOW PROCEED WITH NOVEL TASKS:
         """
         return textwrap.dedent(memory)
-    
-
-    def _iterate(self) -> Generator:
-        memory = self.refresh_memory()
-        plan = self._plan(
-            system_prompt=memory,
-            tools=self.tools,
-        )
-        self._scratchpad.append(
-           f"ALL PREVIOUS PLANS ARE COMPLETE ***** NEW PLAN: {plan}")
-        yield plan
-
-        memory = self.refresh_memory()
-        actions = self._action(
-            system_prompt=memory,
-        )
-        self._scratchpad.append(f"action(s): Calling the following tools - {actions}")
-        yield actions
-        
-        memory = self.refresh_memory()
-        observation = self._observe(
-            system_prompt=memory,
-            actions=actions,
-        )
-        self._scratchpad.append(f"observation(s): {observation}")
-        yield observation
             
 
     def _plan(
         self, 
         system_prompt: str, 
         tools: List[BaseTool],
-    ) -> str:
+    ) -> AgentStep:
         tools_json_desc = [tool.get_schema().json() for tool in tools]
         system_prompt = f"""
             {system_prompt}
@@ -89,14 +83,16 @@ class RAISEAgent(BaseAgent):
             messages=messages,
         )
         response = self.driver.generate(input=driver_input)
-        content = response.content
-        return content
+        plan = response.content
+        self._scratchpad.append(f"ALL PREVIOUS PLANS ARE COMPLETE ***** NEW PLAN: {plan}")
+        self._next_step = NextStep.ACTION
+        return AgentStep(content=plan)
     
     
     def _action(
         self, 
         system_prompt: str, 
-    ) -> List[DriverToolCall]:
+    ) -> AgentStep:
         system_prompt = f"""
             {system_prompt}
 
@@ -111,14 +107,17 @@ class RAISEAgent(BaseAgent):
         )
         response = self.driver.generate(input=driver_input)
         tool_calls = response.tool_calls
-        return tool_calls
+        self._scratchpad.append(f"action(s): Calling the following tools - {tool_calls}")
+        self._next_step = NextStep.OBSERVE
+        self._next_actions = tool_calls
+        return AgentStep(content=tool_calls)
 
 
     def _observe(
         self, 
         system_prompt: str,
         actions: List[DriverToolCall]
-    ):
+    ) -> Union[AgentStep, AgentResult]:
         data = []
         for tool_call in actions:
             # Get function call info
@@ -155,5 +154,7 @@ class RAISEAgent(BaseAgent):
             messages=messages
         )
         response = self.driver.generate(input=driver_input)
-        content = response.content
-        return content
+        observation = response.content
+        self._scratchpad.append(f"observation(s): {observation}")
+        self._next_step = NextStep.PLAN
+        return AgentStep(content=observation)

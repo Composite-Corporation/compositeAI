@@ -27,7 +27,7 @@ agent = RAISEAgent(
 )
 
 for chunk in agent.execute(task, stream=True):
-    print(chunk)
+    print(chunk.content)
     print("\n\n\n\n\n----------------------------------------------------------------------------------------------------------\n\n\n\n\n")
 
 print("FINAL ANSWER:\n\n")

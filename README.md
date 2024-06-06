@@ -42,7 +42,7 @@ What's the weather going to be today in Cambridge, MA?
 """
 
 for chunk in agent.execute(task, stream=True):
-    print(chunk)
+    print(chunk.content)
     print("\n\n\n\n\n----------------------------------------------------------------------------------------------------------\n\n\n\n\n")
 
 print("FINAL ANSWER:\n\n")
