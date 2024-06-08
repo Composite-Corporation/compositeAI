@@ -7,12 +7,13 @@ agent = RAISEAgent(
     driver=OpenAIDriver(model="gpt-4o"),
     description="You are a private investigator that is good at finding information on people.",
     tools=[GoogleSerperApiTool(), WebScrapeTool()],
+    max_iterations=100
 )
 
 task = """
-I need to find info on Joseph Ros, a partner at Entrepreneur First.
-What is his background? How much has he invested? What companies has he invested in?
-Cite sources for each of your answers.
+Can you give me information on Jensen Huang?
+Summarize his main achievements, and tell me about his past.
+Cite your sources.
 """
 
 for chunk in agent.execute(task, stream=True):
