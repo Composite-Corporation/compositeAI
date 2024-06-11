@@ -1,5 +1,5 @@
 from typing import Generator, List, Optional, Union, Any
-from pydantic import BaseModel, Field, validator
+from pydantic import BaseModel, Field, field_validator
 from abc import abstractmethod
 
 from compositeai.tools import BaseTool
@@ -40,19 +40,19 @@ class BaseAgent(BaseModel):
     max_iterations: Optional[int] = Field(default=10, ge=0)
 
 
-    @validator('tools', pre=True)
-    def add_default_tools(cls, value):
-        """Add default tools to tool list"""
-        if not value:
-            value = [AgentFinishTool()]
+    def __init__(self, **data):
+        # Superclass init
+        super().__init__(**data)
+        
+        if not self.tools:
+            self.tools = [AgentFinishTool()]
         else:
-            value.append(AgentFinishTool())
-        return value
+            self.tools.append(AgentFinishTool())
     
 
     def execute(self, task: str, input: Optional[str] = None, stream: bool = False) -> Union[Generator, AgentExecution]:
         # Initial processing on task/input
-        self.initialize(task=task, input=input)
+        self.exec_init(task=task, input=input)
 
         def _execute_stream() -> Generator:
             for _ in range(self.max_iterations):
@@ -81,7 +81,7 @@ class BaseAgent(BaseModel):
 
     
     @abstractmethod
-    def initialize(self, task: str, input: Optional[str] = None) -> None:
+    def exec_init(self, task: str, input: Optional[str] = None) -> None:
         """Used to initial processing of the task or given prior input - called first in execute"""
         raise NotImplementedError("Method must be implemented by a subclass")
 

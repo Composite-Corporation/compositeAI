@@ -1,7 +1,8 @@
-from typing import List
+from typing import List, Optional
 from openai import OpenAI
 from pydantic import validator, PrivateAttr
 from dotenv import load_dotenv
+import json
 
 from compositeai.drivers.base_driver import (
     BaseDriver,
@@ -10,6 +11,10 @@ from compositeai.drivers.base_driver import (
     DriverMessage,
     DriverResponse,
     DriverInput,
+    SystemMessage,
+    UserMessage,
+    AssistantMessage,
+    ToolMessage,
 )
 from compositeai.tools import BaseTool
 
@@ -49,13 +54,10 @@ class OpenAIDriver(BaseDriver):
         self,
         input: DriverInput,
     ) -> DriverResponse:
-        messages = input.messages
-        messages = self._messages_driver_to_openai(messages)
+        messages = self._messages_driver_to_openai(input.messages)
         max_tokens = input.max_tokens
         temperature = input.temperature
-        tools = input.tools
-        if tools:
-            tools = self._fc_schema_basetools_to_openai(tools)
+        tools = self._fc_schema_basetools_to_openai(input.tools)
         tool_choice = input.tool_choice
         if tool_choice:
             tool_choice = tool_choice.value
@@ -70,24 +72,47 @@ class OpenAIDriver(BaseDriver):
         )
 
         content = response.choices[0].message.content
-        tool_calls = response.choices[0].message.tool_calls 
-        driver_tool_calls = None
-        if tool_calls:
-            driver_tool_calls = []
-            for tool_call in tool_calls:
-                driver_tool_call = DriverToolCall(id=tool_call.id, name=tool_call.function.name, args=tool_call.function.arguments)
-                driver_tool_calls.append(driver_tool_call)
+        tool_calls = self._tool_calls_openai_to_driver(response.choices[0].message.tool_calls)
         usage = self._usage_openai_to_driver(response.usage)
 
-        return DriverResponse(content=content, tool_calls=driver_tool_calls, usage=usage)
+        return DriverResponse(content=content, tool_calls=tool_calls, usage=usage)
+    
+    
+    def _tool_calls_openai_to_driver(self, tool_calls: Optional[List[object]]) -> Optional[List[DriverToolCall]]:
+        if tool_calls is None:
+            return None
+        return [DriverToolCall(id=tool_call.id, name=tool_call.function.name, args=tool_call.function.arguments) for tool_call in tool_calls]
+    
+
+    def _tool_calls_driver_to_openai(self, tool_calls: Optional[List[DriverToolCall]]) -> Optional[List[object]]:
+        if tool_calls is None:
+            return None
+        return [{"id": tool_call.id, "type": "function", "function": {"name": tool_call.name, "arguments": tool_call.args}} for tool_call in tool_calls]
 
 
-    def _messages_driver_to_openai(self, messages: List[DriverMessage]) -> List[object]:
-        return [{"role": message.role.value, "content": message.content} for message in messages]
+    def _messages_driver_to_openai(self, messages: Optional[List[DriverMessage]]) -> Optional[List[object]]:
+        if messages is None:
+            return None
+        openai_messages = []
+        for message in messages:
+            if isinstance(message, SystemMessage):
+                openai_messages.append({"role": message.role, "content": message.content, "name": message.name})
+            elif isinstance(message, UserMessage):
+                openai_messages.append({"role": message.role, "content": message.content, "name": message.name})
+            elif isinstance(message, AssistantMessage):
+                tool_calls = self._tool_calls_driver_to_openai(message.tool_calls)
+                openai_messages.append({"role": message.role, "content": message.content, "name": message.name, "tool_calls": tool_calls})
+            elif isinstance(message, ToolMessage):
+                openai_messages.append({"role": message.role, "content": message.content, "tool_call_id": message.tool_call_id})
+            else:
+                raise ValueError("Message is not in a valid form.")
+        return openai_messages
     
 
     # Helper function to convert BaseTool to OpenAI function calling schema
-    def _fc_schema_basetools_to_openai(self, tools: List[BaseTool]) -> List[object]:
+    def _fc_schema_basetools_to_openai(self, tools: Optional[List[BaseTool]]) -> Optional[List[object]]:
+        if tools is None:
+            return None
         openai_fcs = []
         for tool in tools:
             # Get schema of tool/function
