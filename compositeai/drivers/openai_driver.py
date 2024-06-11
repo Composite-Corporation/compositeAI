@@ -61,6 +61,7 @@ class OpenAIDriver(BaseDriver):
         tool_choice = input.tool_choice
         if tool_choice:
             tool_choice = tool_choice.value
+        response_format = {"type": input.response_format}
 
         response = self._client.chat.completions.create(
             model=self.model,
@@ -69,6 +70,7 @@ class OpenAIDriver(BaseDriver):
             temperature=temperature,
             tools=tools,
             tool_choice=tool_choice,
+            response_format=response_format
         )
 
         content = response.choices[0].message.content

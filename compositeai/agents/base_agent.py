@@ -1,17 +1,9 @@
 from typing import Generator, List, Optional, Union, Any
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field
 from abc import abstractmethod
 
 from compositeai.tools import BaseTool
 from compositeai.drivers import BaseDriver
-
-
-class AgentFinishTool(BaseTool):
-    name: str = "agent_finish"
-    description: str = "Return the final result once you believe you have completed the task at hand"
-
-    def func(self, result: str) -> str:
-        return result
     
 
 class AgentOutput(BaseModel):
@@ -38,16 +30,6 @@ class BaseAgent(BaseModel):
     is_entry: Optional[bool] = Field(default=False, description="Setting to True makes this agent the entry point for the user")
     tools: Optional[List[BaseTool]] = Field(default=None)
     max_iterations: Optional[int] = Field(default=10, ge=0)
-
-
-    def __init__(self, **data):
-        # Superclass init
-        super().__init__(**data)
-        
-        if not self.tools:
-            self.tools = [AgentFinishTool()]
-        else:
-            self.tools.append(AgentFinishTool())
     
 
     def execute(self, task: str, input: Optional[str] = None, stream: bool = False) -> Union[Generator, AgentExecution]:

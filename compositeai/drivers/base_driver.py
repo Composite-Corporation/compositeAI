@@ -69,6 +69,7 @@ class DriverInput(BaseModel):
     temperature: Optional[float] = Field(default=0.0, ge=0.0, le=2.0)
     tools: Optional[List[BaseTool]] = Field(default=None)
     tool_choice: Optional[DriverToolChoice] = Field(default=None)
+    response_format: Optional[str] = Field(default="text")
 
 
 ##### Base driver class

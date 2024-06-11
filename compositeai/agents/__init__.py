@@ -5,4 +5,4 @@ from compositeai.agents.base_agent import (
     AgentResult, 
     AgentExecution,
 )
-from compositeai.agents.raise_agent import RAISEAgent
+from compositeai.agents.plan_agent import PlanAgent
