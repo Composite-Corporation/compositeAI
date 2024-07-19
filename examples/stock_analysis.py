@@ -1,6 +1,6 @@
 from compositeai.drivers import OpenAIDriver
 from compositeai.tools import GoogleSerperApiTool, WebScrapeTool
-from compositeai.agents import RAISEAgent
+from compositeai.agents import PlanAgent
 
 
 description = """
@@ -20,7 +20,7 @@ task = """
 3. When you have searched enough, create a summary report with the most newsworthy articles.
 """
 
-agent = RAISEAgent(
+agent = PlanAgent(
     driver=OpenAIDriver(model="gpt-4o"),
     description=description,
     tools=[GoogleSerperApiTool(), WebScrapeTool()],

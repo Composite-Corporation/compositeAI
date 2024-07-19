@@ -1,10 +1,10 @@
 from compositeai.drivers import OpenAIDriver
 from compositeai.tools import GoogleSerperApiTool, WebScrapeTool
-from compositeai.agents import RAISEAgent
+from compositeai.agents import PlanAgent
 
 
-agent = RAISEAgent(
-    driver=OpenAIDriver(model="gpt-4o"),
+agent = PlanAgent(
+    driver=OpenAIDriver(model="gpt-4o-mini"),
     description="You are a private investigator that is good at finding information on people.",
     tools=[GoogleSerperApiTool(), WebScrapeTool()],
     max_iterations=100
