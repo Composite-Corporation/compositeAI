@@ -152,6 +152,7 @@ class OpenAIDriver(BaseDriver):
             "str": "string",
             "float": "float",
             "bool": "boolean",
+            "list": "array",
         }
         return conversions[type]
     
