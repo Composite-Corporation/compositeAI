@@ -138,6 +138,8 @@ class OpenAIDriver(BaseDriver):
             # Populate formatted arguments for tool
             for arg in tool_schema.arguments:
                 openai_fc["function"]["parameters"]["properties"][arg.name] = {"type": self._type_conversion_openai(arg.type)}
+                if arg.type == "list":
+                    openai_fc["function"]["parameters"]["properties"][arg.name] = {"items": {"type": "string"}}
                 if arg.required:
                     openai_fc["function"]["parameters"]["required"].append(arg.name)
             
