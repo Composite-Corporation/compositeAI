@@ -4,7 +4,7 @@ from compositeai.agents import PlanAgent
 
 
 agent = PlanAgent(
-    driver=OpenAIDriver(model="gpt-4o-mini"),
+    driver=OpenAIDriver(model="gpt-4o-mini", seed=1337),
     description="You are a private investigator that is good at finding information on people.",
     tools=[GoogleSerperApiTool(), WebScrapeTool()],
     max_iterations=100

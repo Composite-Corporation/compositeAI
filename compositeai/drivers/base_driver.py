@@ -76,6 +76,7 @@ class DriverInput(BaseModel):
 
 class BaseDriver(BaseModel):
     model: str = Field("Name of the LLM model to use from specific driver")
+    seed: Optional[int] = Field("Seed for the driver to use on each LLM request")
 
     @abstractmethod
     def generate(

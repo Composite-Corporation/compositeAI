@@ -70,7 +70,8 @@ class OpenAIDriver(BaseDriver):
             temperature=temperature,
             tools=tools,
             tool_choice=tool_choice,
-            response_format=response_format
+            response_format=response_format,
+            seed=self.seed,
         )
 
         content = response.choices[0].message.content
