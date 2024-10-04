@@ -253,6 +253,7 @@ class PlanAgent(BaseAgent):
         driver_input = DriverInput(
             messages=self._memory + [SystemMessage(role="system", content=result_prompt)],
             temperature=0.0,
+            response_format=self.response_format,
         )
         response = self.driver.generate(input=driver_input)
         return AgentResult(content=response.content)

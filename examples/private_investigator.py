@@ -1,14 +1,23 @@
+from pydantic import BaseModel
+from typing import List
 from compositeai.drivers import OpenAIDriver
 from compositeai.tools import GoogleSerperApiTool, WebScrapeTool
 from compositeai.agents import PlanAgent
+
+
+class Answer(BaseModel):
+    achievements: List[str]
+    sources: List[str]
 
 
 agent = PlanAgent(
     driver=OpenAIDriver(model="gpt-4o-mini", seed=1337),
     description="You are a private investigator that is good at finding information on people.",
     tools=[GoogleSerperApiTool(), WebScrapeTool()],
-    max_iterations=100
+    max_iterations=100,
+    response_format=Answer,
 )
+
 
 task = """
 Can you give me information on Jensen Huang?

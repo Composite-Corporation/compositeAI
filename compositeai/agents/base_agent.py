@@ -30,6 +30,7 @@ class BaseAgent(BaseModel):
     is_entry: Optional[bool] = Field(default=False, description="Setting to True makes this agent the entry point for the user")
     tools: Optional[List[BaseTool]] = Field(default=None)
     max_iterations: Optional[int] = Field(default=10, ge=0)
+    response_format: Optional[Any] = Field(default="text")
     
 
     def execute(self, task: str, input: Optional[str] = None, stream: bool = False) -> Union[Generator, AgentExecution]:

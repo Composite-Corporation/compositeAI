@@ -61,24 +61,34 @@ class OpenAIDriver(BaseDriver):
         tool_choice = input.tool_choice
         if tool_choice:
             tool_choice = tool_choice.value
-        response_format = {"type": input.response_format}
 
-        response = self._client.chat.completions.create(
-            model=self.model,
-            messages=messages,
-            max_tokens=max_tokens,
-            temperature=temperature,
-            tools=tools,
-            tool_choice=tool_choice,
-            response_format=response_format,
-            seed=self.seed,
-        )
-
-        content = response.choices[0].message.content
-        tool_calls = self._tool_calls_openai_to_driver(response.choices[0].message.tool_calls)
-        usage = self._usage_openai_to_driver(response.usage)
-
-        return DriverResponse(content=content, tool_calls=tool_calls, usage=usage)
+        if isinstance(input.response_format, str):
+            response = self._client.chat.completions.create(
+                model=self.model,
+                messages=messages,
+                max_tokens=max_tokens,
+                temperature=temperature,
+                tools=tools,
+                tool_choice=tool_choice,
+                response_format={"type": input.response_format},
+                seed=self.seed,
+            )
+            content = response.choices[0].message.content
+            tool_calls = self._tool_calls_openai_to_driver(response.choices[0].message.tool_calls)
+            usage = self._usage_openai_to_driver(response.usage)
+            return DriverResponse(content=content, tool_calls=tool_calls, usage=usage)
+        else:
+            response = self._client.beta.chat.completions.parse(
+                model=self.model,
+                messages=messages,
+                max_tokens=max_tokens,
+                temperature=temperature,
+                response_format=input.response_format,
+                seed=self.seed,
+            )
+            content = response.choices[0].message.parsed
+            usage = self._usage_openai_to_driver(response.usage)
+            return DriverResponse(content=content, tool_calls=None, usage=usage)
     
     
     def _tool_calls_openai_to_driver(self, tool_calls: Optional[List[object]]) -> Optional[List[DriverToolCall]]:
