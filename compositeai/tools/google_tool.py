@@ -19,13 +19,16 @@ class GoogleSerperApiTool(BaseTool):
 
 
     def func(self, query: str) -> Any:
-        url = "https://google.serper.dev/search"
-        payload = json.dumps({
-            "q": query
-        })
-        headers = {
-            'X-API-KEY': self._SERP_API_KEY,
-            'Content-Type': 'application/json'
-        }
-        response = requests.request("POST", url, headers=headers, data=payload)
-        return response.json()["organic"]
+        try:
+            url = "https://google.serper.dev/search"
+            payload = json.dumps({
+                "q": query
+            })
+            headers = {
+                'X-API-KEY': self._SERP_API_KEY,
+                'Content-Type': 'application/json'
+            }
+            response = requests.request("POST", url, headers=headers, data=payload)
+            return response.json()["organic"]
+        except Exception as e:
+            return f"Error using google_search: {e}"

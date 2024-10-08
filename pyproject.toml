@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "compositeai"
-version = "0.1.8"
+version = "0.1.9"
 description = "Composite.ai was developed to make it as easy as possible for developers to build advanced AI agent systems while sacrificing as little customizability and versatility as possible. Using our framework, you should be able to construct AI agent teams that can complete complicated tasks and define rules for their interactions in just a few lines of code."
 authors = ["Leon Chen <lrchen01@gmail.com>"]
 readme = "README.md"
